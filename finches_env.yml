@@ -1,0 +1,42 @@
+# finches_env.yml - Reproducible conda environment for FINCHES
+name: finches-env
+channels:
+  - conda-forge # Prioritize conda-forge for broader package compatibility
+  - pytorch     # Keep pytorch for pytorch and its core dependencies
+  - defaults
+dependencies:
+  - python=3.12 # recommended version on github
+  - pip
+  - numpy
+  - pytorch
+  - scipy
+  - pyarrow
+  - cython
+  - matplotlib=3.8 # pinning to older version, otherwise get clash with python version
+  - jupyter
+  - mdtraj
+  - pip:
+    - metapredict
+
+# Note: The FINCHES package itself (idptools/finches) is intentionally
+# NOT included directly in this YML file as a pip dependency.
+# This is because the FINCHES documentation recommends installing it
+# via 'git clone' followed by 'pip install -e .' for better
+# updates and Cython compilation.
+#
+# To fully reproduce the environment:
+# 1. Create the environment using this YML:
+#    conda env create -f finches_env.yml
+# 2. Activate the environment:
+#    conda activate finches-env
+# 3. Clone the FINCHES repository:
+#    git clone https://github.com/idptools/finches.git
+# 4. Navigate into the cloned 'finches' directory:
+#    cd finches
+# 5. Install FINCHES in editable mode:
+#    pip install -e .
+#
+# If Finches is updated can easily included that into environment with:
+# conda activate finches-env
+# cd <directory>/finches_tools/finches 
+# git pull

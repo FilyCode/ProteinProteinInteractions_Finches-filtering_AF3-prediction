@@ -1,0 +1,18 @@
+# jupyter_env.yml - Reproducible conda environment for basic jupyter data analysis
+name: jupyter_env
+channels:
+  - conda-forge # Prioritize conda-forge for broader package compatibility
+  - pytorch     # Keep pytorch for pytorch and its core dependencies
+  - defaults
+dependencies:
+  - python
+  - numpy
+  - pandas
+  - pytorch
+  - scipy
+  - pyarrow
+  - matplotlib
+  - jupyter
+  - biopython
+  - tqdm
+  - seaborn
