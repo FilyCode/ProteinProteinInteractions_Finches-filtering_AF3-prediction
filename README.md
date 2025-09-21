@@ -1,6 +1,6 @@
 # Protein-Protein Interaction Prediction: Finches-filtered AlphaFold3 Pipeline
 
-This repository provides a comprehensive pipeline for predicting viral-human protein-protein interactions (PPIs). It leverages `finches` for identifying potential interactions involving intrinsically disordered regions (IDRs) as a filtering step, followed by detailed structural prediction using AlphaFold3 (AF3) for selected pairs. The pipeline is optimized for execution on the Boston University Shared Computing Cluster (BU SCC) using the SGE job scheduler.
+This repository provides a comprehensive pipeline for predicting viral-human protein-protein interactions (PPIs). It leverages `finches` (https://github.com/idptools/finches) for identifying potential interactions involving intrinsically disordered regions (IDRs) as a filtering step, followed by detailed structural prediction using AlphaFold3 (AF3) for selected pairs. The pipeline is optimized for execution on the Boston University Shared Computing Cluster (BU SCC) using the SGE job scheduler.
 
 ## Overview
 
