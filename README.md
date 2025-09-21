@@ -31,16 +31,25 @@ The pipeline consists of the following sequential stages:
 
 ### Conda Environments
 
-This pipeline requires at least two separate Conda environments due to dependencies:
+This pipeline requires at least two separate Conda environments, defined by the provided `.yml` files, and a system module for AlphaFold3:
 
-1.  **`finches-env`**: For `finches` calculations and general data handling (pandas, numpy, pyarrow, tqdm).
+1.  **`finches-env`**: For `finches` calculations.
+    To create and activate this environment:
     ```bash
-    # Example environment creation (adjust as needed)
-    conda create -n finches-env python=3.9
+    conda env create -f finches_env.yml
     conda activate finches-env
-    pip install pandas numpy finches tqdm pyarrow
     ```
-2.  **`alphafold3`**: For AlphaFold3 execution. On BU SCC, this is typically provided via a module.
+
+2.  **`jupyter-env`**: For running the Jupyter notebooks (`.ipynb` files) for data preparation and analysis.
+    To create and activate this environment:
+    ```bash
+    conda env create -f jupyter_env.yml
+    conda activate jupyter-env
+    # To use this kernel in Jupyter:
+    python -m ipykernel install --user --name=jupyter-env
+    ```
+
+3.  **`alphafold3`**: For AlphaFold3 execution. On BU SCC, this is typically provided via a module, as specified in the SGE job scripts. No separate Conda environment creation is usually needed for this on SCC.
 
 ### AlphaFold3 Model Weights
 
@@ -52,16 +61,15 @@ Example: `export MODEL_DIR="/projectnb/cancergrp/Philipp/alphafold3_models"`
 
 The `.sh` scripts (`run_filter.sh`, `02_run_data_pipeline.sh`, `03_run_inference.sh`) are designed for the SGE job scheduler on BU SCC.
 
-*   **Module Loading:** Ensure `module load miniconda` (for finches) and `module load alphafold3/3.0.0` (for AF3) are correctly configured.
+*   **Module Loading:** Ensure `module load miniconda` (for finches and jupyter conda environments) and `module load alphafold3/3.0.0` (for AF3) are correctly configured in the SGE scripts.
 *   **Project Name:** Update `#$ -P myproject` to your actual SCC project name.
 *   **Resource Requests:** Adjust `h_rt`, `pe omp`, `mem_per_core`, `gpus`, `gpu_type`, `gpu_memory` as needed based on your job requirements and SCC policies.
-*   **SCC AlphaFold3 Examples:** The AF3 scripts assume you have copied the SCC AlphaFold3 example files, especially `run_alphafold.sh` wrapper script, and established the `$SCC_ALPHAFOLD3_EXAMPLES` environment variable.
 
 ## Usage
 
 ### 1. Initial Data Preparation
 
-Use `transform-fasta-data-to-csv.ipynb` to convert your viral and human protein FASTA files into CSV format.
+Use `transform-fasta-data-to-csv.ipynb` (run in `jupyter-env`) to convert your viral and human protein FASTA files into CSV format.
 
 *   **Input:** Viral and human FASTA files.
 *   **Output:** `VP_pos_selec_enriched_hits.csv` (viral) and `Human-proteom_GCF_000001405.40.csv` (human) or similarly named CSV files in your `data/` directory. Ensure `ID_COLUMN` and `SEQUENCE_COLUMN` match those expected by `filter-viral-human-pairs-with-finches.py`.
@@ -85,7 +93,7 @@ This step calculates interaction propensities for all viral-human protein pairs.
 
 ### 3. Analyze Finches Results
 
-Use `finches-results-analysis.ipynb` to load and analyze the `.parquet` output from the `finches` filtering step. This notebook will guide you through:
+Use `finches-results-analysis.ipynb` (run in `jupyter-env`) to load and analyze the `.parquet` output from the `finches` filtering step. This notebook will guide you through:
 
 *   Loading the interaction results.
 *   Filtering for significant attraction/repulsion.
@@ -93,7 +101,7 @@ Use `finches-results-analysis.ipynb` to load and analyze the `.parquet` output f
 
 ### 4. AlphaFold3 Input Preparation
 
-Use `01_prepare_inputs.py` to generate the necessary AlphaFold3 input JSON files for the filtered pairs.
+Use `01_prepare_inputs.py` (can be run in `jupyter-env` or `finches-env`) to generate the necessary AlphaFold3 input JSON files for the filtered pairs.
 
 *   **Input:** The filtered `finches` results (e.g., a CSV of selected pairs). The script expects a `json_list.txt` file which contains paths to input JSON files.
 *   **Output:** A series of `alphafold_input.json` files, typically placed in an `input/` directory, and `json_list.txt` listing these files.
@@ -142,7 +150,7 @@ This stage performs the structural prediction using GPUs. It's an array job that
 
 ### 7. AlphaFold3 Post-processing
 
-After AF3 inference, use `04_post_processing_results.ipynb` to analyze the predicted structures. This notebook will help you:
+After AF3 inference, use `04_post_processing_results.ipynb` (run in `jupyter-env`) to analyze the predicted structures. This notebook will help you:
 
 *   Load predicted structures and associated metadata.
 *   Extract key quality metrics (pLDDT, pae).
@@ -160,4 +168,4 @@ The pipeline generates several key outputs:
 
 ## Authorship
 
-This pipeline and its associated scripts were solely developed by Philipp Trollmann during their first PhD rotation in Dr. Pinghua Liu's lab at Boston University.
+This pipeline and its associated scripts were solely developed by Philipp Trollmann during his second PhD rotation in Dr. Juam Fuxman Bass's lab at Boston University.
