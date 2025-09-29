@@ -20,7 +20,7 @@ warnings.filterwarnings(
 )
 
 # Configuration 
-SEQUENCE_COLUMN = 'Aminoacids' # column containing the protein sequence string
+SEQUENCE_COLUMN = 'Sequence' # column containing the protein sequence string
 ID_COLUMN = 'ID'     # column containing a unique identifier for each sequence
 
 parser = argparse.ArgumentParser(description="Filter viral-human pairs with finches.")
