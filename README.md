@@ -59,15 +59,15 @@ The pipeline consists of the following sequential stages:
 
 Expected directories (customize as needed):
 
-data/                    # Raw input lists, sequence datasets, controls
-af3_inputs/              # AlphaFold3 input JSONs, organized by experiment/control type
-af3_data_json/           # AlphaFold3 data pipeline output JSONs (features)
-af3_outputs/             # AlphaFold3 final structure files (.cif, .json, metadata)
-results/                 # Finches epsilon results and summary stats
-data/positive_controls/  # Positive control datasets
-data/negative_controls_shuffled/  # Shuffled negative controls
-data/negative_controls_random/    # Random sequence controls
-af3_inference_locks/     # Lock directories for polling in inference
+    data/                             # Raw input lists, sequence datasets, controls
+    af3_inputs/                       # AlphaFold3 input JSONs, organized by experiment/control type
+    af3_data_json/                    # AlphaFold3 data pipeline output JSONs (features)
+    af3_outputs/                      # AlphaFold3 final structure files (.cif, .json, metadata)
+    results/                          # Finches epsilon results and summary stats
+    data/positive_controls/           # Positive control datasets
+    data/negative_controls_shuffled/  # Shuffled negative controls
+    data/negative_controls_random/    # Random sequence controls
+    af3_inference_locks/              # Lock directories for polling in inference
 
 
 ## Setup and Prerequisites
