@@ -10,7 +10,7 @@
                                  # This value will be used to dynamically set polling limits.
 #$ -j y                          # Merge stdout and stderr.
 #$ -o af3_inference_array.out    # Output file for merged stdout/stderr for all array tasks.
-#$ -m e                            # Email notification (job begins (b), ends (e), is aborted (a), suspended (s), or never (n))
+##$ -m e                            # Email notification (job begins (b), ends (e), is aborted (a), suspended (s), or never (n))
 
 # Resource Requests for Inference:
 #$ -pe omp 4                     # Request 4 CPU cores.

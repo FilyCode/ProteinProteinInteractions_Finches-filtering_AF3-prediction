@@ -13,7 +13,7 @@ os.makedirs(output_dir, exist_ok=True)
 
 # Read the filtered hits
 df = pd.read_csv(input_csv)
-df = df[:10]
+df = df[:100]
 
 json_paths = []
 for index, row in df.iterrows():
@@ -26,6 +26,13 @@ for index, row in df.iterrows():
     s1_sequence = row["Sequence_A"]
     s2_id = row["ID_B_Interactor"].upper()
     s2_sequence = row["Sequence_B"]
+
+    # Check if s1_sequence is null (NaN/None), empty string, or 'NOT_FOUND'
+    # OR if s2_sequence is null (NaN/None), empty string, or 'NOT_FOUND'
+    if (pd.isna(s1_sequence) or s1_sequence == '' or s1_sequence == 'NOT_FOUND' or
+        pd.isna(s2_sequence) or s2_sequence == '' or s2_sequence == 'NOT_FOUND'):
+        print(f"Skipping row {index} due to invalid sequence for ID_A: '{s1_id}' or ID_B: '{s2_id}'")
+        continue
 
     # AlphaFold3 requires simple uppercase letters for entity IDs
     af3_entity_id_1 = "A"
