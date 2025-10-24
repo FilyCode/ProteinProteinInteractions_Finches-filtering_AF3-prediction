@@ -8,7 +8,7 @@
 # --------------------------------------------------------------------------------
 
 #$ -P cancergrp                    # Specify the project name for accounting and resource allocation.
-#$ -l h_rt=12:00:00                # Set the hard time limit for each array task (hh:mm:ss).
+#$ -l h_rt=24:00:00                # Set the hard time limit for each array task (hh:mm:ss).
                                    # Adjust based on your expected feature generation runtime.
 #$ -N af3_data_pipeline_array      # Assign a descriptive name to this job array.
 #$ -j y                            # Merge standard output (stdout) and standard error (stderr) into a single file.
@@ -19,7 +19,7 @@
 # AlphaFold3 feature generation benefits from multiple CPU cores for MSA generation.
 #$ -pe omp 16                      # Request a parallel environment for shared memory (OpenMP) applications,
                                    # specifying the number of CPU cores (e.g., for multiprocessing.Pool).
-#$ -l mem_per_core=8G              # Request memory per core. Total memory will be N_cores * mem_per_core (16 * 4G = 64G).
+#$ -l mem_per_core=1G              # Request memory per core. Total memory will be N_cores * mem_per_core (16 * 4G = 64G).
                                    # This is generally sufficient for most feature generation tasks.
 
 # --------------------------------------------------------------------------------
@@ -34,6 +34,17 @@ echo "Job started on host: $(hostname)"
 echo "Initial working directory: $(pwd)"
 echo "Job ID: ${JOB_ID}, Array Task ID: ${SGE_TASK_ID}"
 echo "------------------------------------------------------------"
+
+# --- IMPORTANT: Validate SGE_TASK_ID for array jobs ---
+# Check if SGE_TASK_ID is empty OR if it's not a positive integer
+if [ -z "${SGE_TASK_ID}" ] || ! [[ "${SGE_TASK_ID}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "CRITICAL Error: SGE_TASK_ID is either undefined/empty or not a valid positive number." >&2
+    echo "This script is designed for SGE array jobs. Please ensure you submit it using:" >&2
+    echo "  1. unset SGE_TASK_ID (to clear any previous value)" >&2
+    echo "  2. NUM_TASKS=\$(wc -l < json_list.txt)" >&2
+    echo "  3. qsub -t 1-\${NUM_TASKS} 02_run_data_pipeline.sh" >&2
+    exit 1
+fi
 
 # IMPORTANT: Define the absolute path to your project's base directory.
 # All relative paths for inputs/outputs in this script will be resolved against this base.

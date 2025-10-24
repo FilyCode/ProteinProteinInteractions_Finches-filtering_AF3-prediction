@@ -14,7 +14,7 @@
 
 # Resource Requests for Inference:
 #$ -pe omp 4                     # Request 4 CPU cores.
-#$ -l mem_per_core=8G            # Request 8GB of memory per CPU core (32GB total).
+#$ -l mem_per_core=4G            # Request 8GB of memory per CPU core (32GB total).
 #$ -l gpus=1                     # Request x GPU.
 #$ -l gpu_type=A100              # Specify GPU model.
 #$ -l gpu_memory=80G             # Specify GPU memory.
