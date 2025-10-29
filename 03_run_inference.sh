@@ -6,7 +6,7 @@
 
 #$ -P cancergrp                  # Specify the project name.
 #$ -N af3_inference_array        # Assign a descriptive name to this job array.
-#$ -l h_rt=24:00:00              # Set the hard time limit for each array task (hh:mm:ss).
+#$ -l h_rt=12:00:00              # Set the hard time limit for each array task (hh:mm:ss).
                                  # This value will be used to dynamically set polling limits.
 #$ -j y                          # Merge stdout and stderr.
 #$ -o af3_inference_array.out    # Output file for merged stdout/stderr for all array tasks.
@@ -14,7 +14,7 @@
 
 # Resource Requests for Inference:
 #$ -pe omp 4                     # Request 4 CPU cores.
-#$ -l mem_per_core=4G            # Request 8GB of memory per CPU core (32GB total).
+#$ -l mem_per_core=8G            # Request 8GB of memory per CPU core (32GB total).
 #$ -l gpus=1                     # Request x GPU.
 #$ -l gpu_type=A100              # Specify GPU model.
 #$ -l gpu_memory=80G             # Specify GPU memory.

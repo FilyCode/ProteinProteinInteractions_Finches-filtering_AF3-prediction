@@ -8,7 +8,7 @@
 # --------------------------------------------------------------------------------
 
 #$ -P cancergrp                    # Specify the project name for accounting and resource allocation.
-#$ -l h_rt=24:00:00                # Set the hard time limit for each array task (hh:mm:ss).
+#$ -l h_rt=10:00:00                # Set the hard time limit for each array task (hh:mm:ss).
                                    # Adjust based on your expected feature generation runtime.
 #$ -N af3_data_pipeline_array      # Assign a descriptive name to this job array.
 #$ -j y                            # Merge standard output (stdout) and standard error (stderr) into a single file.
@@ -17,7 +17,7 @@
 
 # Resource Requests for Data Pipeline:
 # AlphaFold3 feature generation benefits from multiple CPU cores for MSA generation.
-#$ -pe omp 16                      # Request a parallel environment for shared memory (OpenMP) applications,
+#$ -pe omp 10                      # Request a parallel environment for shared memory (OpenMP) applications,
                                    # specifying the number of CPU cores (e.g., for multiprocessing.Pool).
 #$ -l mem_per_core=1G              # Request memory per core. Total memory will be N_cores * mem_per_core (16 * 4G = 64G).
                                    # This is generally sufficient for most feature generation tasks.
