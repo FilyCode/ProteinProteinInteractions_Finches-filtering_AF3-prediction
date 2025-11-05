@@ -471,9 +471,6 @@ def run_netsurfp3_standalone_prediction(input_df, num_netsurfp3_processes=None):
                                   total=num_batches,
                                   desc=f"NetSurfP-3 batches ({num_netsurfp3_processes} cores)"):
             total_rsa_map.update(batch_results) # Aggregate results from each batch
-            print(batch_results)
-
-    print(input_df)
 
     return total_rsa_map
 
@@ -645,9 +642,6 @@ def calculate_all_peptide_structural_properties(peptides_df_with_ncbi, full_prot
         prot_rsa_scores = protein_rsa_map.get(ncbi_id)
         s4pred_ss = s4pred_map.get(peptide_id, 'C' * len(peptide_seq))
 
-        print(protein_rsa_map)
-        print(ncbi_id)
-        print(prot_rsa_scores)
         task_args.append(
             (peptide_id, peptide_seq, s4pred_ss, threshold_disorder, 
              full_prot_seq, prot_rsa_scores, rsa_buried_threshold)
