@@ -284,6 +284,18 @@ plot_composition(
     RESULTS_DIR
 )
 
+# Plot 5: Experiment Subset Comparisons
+plot_composition(
+    {'Full Library (VT/VP)': comp_full_library,
+    'Significant (VT/VP)': comp_exp_sig, 
+    'Non-Significant (VT/VP)': comp_exp_non_sig,
+    'Upregulated Significant (VT/VP)': comp_exp_up, 
+    'Downregulated Significant (VT/VP)': comp_exp_down},
+    'Comparison of Peptides (VT/VP)',
+    'comparison_peptide_amino_acid_comparison',
+    RESULTS_DIR
+)
+
 print("\nAnalysis Complete! Check your results directory for the summary CSV and plots.")
 
 
