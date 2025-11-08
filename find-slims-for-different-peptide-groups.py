@@ -10,13 +10,12 @@ import argparse
 import openpyxl
 import math
 
-#parser = argparse.ArgumentParser(description="Find SLiMs for different peptide groups.")
-#parser.add_argument("--num_forks", type=int, default=1,
-#                    help="Number of CPU forks for SLiMFinder parallel execution.")
-#args = parser.parse_args()
+parser = argparse.ArgumentParser(description="Find SLiMs for different peptide groups.")
+parser.add_argument("--num_forks", type=int, default=1,
+                    help="Number of CPU forks for SLiMFinder parallel execution.")
+args = parser.parse_args()
 
-#NUM_FORKS_SLIMFINDER = args.num_forks
-NUM_FORKS_SLIMFINDER = 1
+NUM_FORKS_SLIMFINDER = args.num_forks
 
 # --- SLiMSuite Configuration ---
 # IMPORTANT: Adjust this path to where you cloned SLiMSuite
