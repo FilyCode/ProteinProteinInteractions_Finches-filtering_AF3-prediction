@@ -1,0 +1,19 @@
+name: my_analysis_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.10 # A recent stable Python version, compatible with metapredict
+  - jupyter
+  - pyarrow
+  - pandas
+  - numpy
+  - seaborn
+  - matplotlib
+  - tqdm
+  - s4pred # Available on bioconda
+  - pytorch # Recommended to be from the same package manager as numpy for metapredict if using GPU
+  - pip
+  - pip:
+    - metapredict # Recommended to install via pip within a conda environment

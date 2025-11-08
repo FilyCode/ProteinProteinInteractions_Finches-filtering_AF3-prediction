@@ -1,0 +1,16 @@
+name: slimsuite_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=3.9 # A recent stable Python version, compatible with slimsuite
+  - biopython
+  - jupyter
+  - pyarrow
+  - pandas
+  - numpy
+  - seaborn
+  - matplotlib
+  - tqdm
+  - openpyxl

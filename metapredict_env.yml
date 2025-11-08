@@ -1,0 +1,18 @@
+# metapredict_env.yml - Reproducible conda environment for IDR predictions with metapredict
+name: metapredict_env
+channels:
+  - conda-forge # Prioritize conda-forge for broader package compatibility
+  - pytorch     # Ensure PyTorch is sourced from its dedicated channel
+  - defaults
+dependencies:
+  - python=3.11 # metapredict documentation suggests Python 3.11
+  - pip         # to be able to install metpredict
+  - numpy       # Core numerical library, dependency of PyTorch/metapredict
+  - pytorch     # Deep learning framework required by metapredict (CPU version by default)
+  - scipy       # Scientific computing library
+  - cython      # metapredict lists this as a dependency for correct compilation
+  - matplotlib  # metapredict lists this as a dependency
+  - biopython   # Essential for parsing FASTA sequence files
+  - pandas      # For efficient handling and saving of dataframes to CSV
+  - pip:
+    - metapredict # Install metapredict directly from PyPI
