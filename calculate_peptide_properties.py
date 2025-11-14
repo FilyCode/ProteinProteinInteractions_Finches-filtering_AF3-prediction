@@ -301,6 +301,25 @@ print("\nAnalysis Complete! Check your results directory for the summary CSV and
 
 
 
+def _extend_protein_sequence(original_seq, target_length):
+    """
+    Extends a protein sequence by repeating it until it reaches the target_length.
+    If original_seq is empty, returns an empty string.
+    If original_seq is already long enough, returns original_seq.
+    """
+    if len(original_seq) == 0:
+        return ""
+    if len(original_seq) >= target_length:
+        return original_seq
+
+    # Calculate how many full repeats are needed
+    num_repeats = math.ceil(target_length / len(original_seq))
+    extended_seq = (original_seq * num_repeats)
+    
+    # Trim if it's longer than needed, but ensure it's at least target_length
+    return extended_seq[:max(len(original_seq), target_length)]
+
+
 def get_unique_full_protein_info(full_library_proteins_df):
     """
     Extracts unique full protein sequences and their NCBI_ids for NetSurfP-3 input.
@@ -492,8 +511,10 @@ def _process_single_peptide_properties(args):
     """
     Worker function to calculate properties for a single peptide, including buried/exposed status.
     This function will be run in parallel processes.
+    It now expects the *extended* full protein sequence and its corresponding RSA scores
+    for accurate buried/exposed calculation for short proteins.
     """
-    peptide_id, seq, s4pred_pred_string, threshold_disorder, full_protein_seq, protein_rsa_scores, rsa_buried_threshold = args
+    peptide_id, seq, s4pred_pred_string, threshold_disorder, full_protein_seq_extended, protein_rsa_scores_extended, rsa_buried_threshold, ncbi_id = args
 
     initial_props = {f'{prop}_perc': 0.0 for prop in PEPTIDE_PROPERTY_TYPES}
     return_dict = {'identifier': peptide_id, **initial_props}
@@ -527,42 +548,54 @@ def _process_single_peptide_properties(args):
     return_dict['Coil_perc'] = (combined_prediction_string.count('C') / total_residues) * 100
 
     # 4. Buried/Exposed calculation using full protein RSA scores
-    if full_protein_seq and protein_rsa_scores and len(full_protein_seq) == len(protein_rsa_scores):
-        # Remove leading M (artifact from sequencing) to match to original protein
-        search_seq = seq
-        stripped_m = False
-        if seq.startswith('M') and len(seq) > 1:
-            # If the peptide starts with 'M' and is long enough to strip,
-            # use the M-stripped version for finding in the full protein.
-            search_seq = seq[1:]
-            stripped_m = True
-            
-        start_index = full_protein_seq.find(search_seq)        
+    # Check if we have both the extended full protein sequence and its RSA scores, and if their lengths match.
+    if full_protein_seq_extended and protein_rsa_scores_extended and len(full_protein_seq_extended) == len(protein_rsa_scores_extended):
+        
+        start_index = -1
+        matched_seq_len = 0
+        stripped_m_attempted = False
 
+        # Attempt 1: Try finding the peptide directly (original sequence)
+        start_index = full_protein_seq_extended.find(seq)
         if start_index != -1:
-            # Adjust slice length if 'M' was stripped, the RSA scores correspond to the full_protein_seq
-            # so the slice should still be the length of the *original* peptide if we expect a 1:1 match.
-            # However, if the M was spurious, we want the RSA for the *matched* part.
-            # The RSA scores for the peptide should match the length of `search_seq`.
-            # If the M was stripped, the peptide (seq) is 1 longer than search_seq.
+            matched_seq_len = len(seq)
+        
+        # Attempt 2: If original not found, and peptide starts with 'M', try without the leading 'M'
+        if start_index == -1 and seq.startswith('M') and len(seq) > 1:
+            search_seq_stripped = seq[1:]
+            start_index = full_protein_seq_extended.find(search_seq_stripped)
+            if start_index != -1:
+                matched_seq_len = len(search_seq_stripped)
+                stripped_m_attempted = True # Mark that stripping was successful
+        
+        # If the peptide (or its M-stripped version) was found:
+        if start_index != -1:
+            peptide_rsa_slice = protein_rsa_scores_extended[start_index : start_index + matched_seq_len]
             
-            # This logic assumes protein_rsa_scores align with full_protein_seq, and we want
-            # RSA for the *part of the protein that matches our peptide's core sequence*.
-            peptide_rsa_slice = protein_rsa_scores[start_index : start_index + len(search_seq)]
-            
-            if len(peptide_rsa_slice) == len(search_seq):
+            if len(peptide_rsa_slice) == matched_seq_len:
                 buried_count = sum(1 for rsa in peptide_rsa_slice if rsa < rsa_buried_threshold)
                 exposed_count = len(peptide_rsa_slice) - buried_count
                 
-                return_dict['Buried_perc'] = (buried_count / len(search_seq)) * 100 # Calculate percentage over search_seq length
-                return_dict['Exposed_perc'] = (exposed_count / len(search_seq)) * 100
+                return_dict['Buried_perc'] = (buried_count / matched_seq_len) * 100
+                return_dict['Exposed_perc'] = (exposed_count / matched_seq_len) * 100
             else:
-                print(f"Warning: RSA slice length mismatch for peptide '{seq[:20]}...' (ID: {peptide_id}, stripped M: {stripped_m}). Expected {len(search_seq)}, got {len(peptide_rsa_slice)}. Buried/Exposed percentages will be 0.")
+                sys.stderr.write(f"Warning: RSA slice length mismatch for peptide '{peptide_id}' (NCBI: {ncbi_id}, seq: '{seq[:20]}...'). "
+                                 f"Expected {matched_seq_len}, got {len(peptide_rsa_slice)}. "
+                                 f"This might indicate an issue with RSA score generation. Buried/Exposed percentages will be 0.\n")
         else:
-            reason = "(after stripping leading 'M')" if stripped_m else "(original sequence)"
-            print(f"Warning: Peptide '{seq[:20]}...' (ID: {peptide_id}) {reason} not found in its full protein sequence. Buried/Exposed percentages will be 0.")
+            reason_attempted = ""
+            if stripped_m_attempted:
+                reason_attempted = f" (tried original '{seq[:20]}...' and stripped 'M': '{seq[1:21]}...')"
+            elif seq.startswith('M') and len(seq) > 1:
+                 reason_attempted = f" (tried original '{seq[:20]}...'; M-stripped failed too)"
+            else:
+                 reason_attempted = f" (original sequence '{seq[:20]}...')"
+
+            sys.stderr.write(f"Warning: Peptide '{peptide_id}'{reason_attempted} not found in its extended full protein sequence (NCBI: {ncbi_id}). Buried/Exposed percentages will be 0.\n")
     else:
-        print(f"Warning: Missing full protein sequence or RSA scores for peptide {peptide_id}'s protein, or length mismatch ({len(full_protein_seq) if full_protein_seq else 0} vs {len(protein_rsa_scores) if protein_rsa_scores else 0}). Buried/Exposed percentages will be 0.")
+        sys.stderr.write(f"Warning: Missing extended full protein sequence or RSA scores for protein '{ncbi_id}' (peptide '{peptide_id}'), "
+                         f"or length mismatch (full_seq len: {len(full_protein_seq_extended) if full_protein_seq_extended else 0} vs rsa scores len: {len(protein_rsa_scores_extended) if protein_rsa_scores_extended else 0}). "
+                         f"Buried/Exposed percentages will be 0.\n")
 
     return return_dict
 
@@ -572,6 +605,7 @@ def calculate_all_peptide_structural_properties(peptides_df_with_ncbi, full_prot
     """
     Calculates all peptide properties (Disorder, SS, Buried/Exposed).
     Orchestrates full protein RSA prediction and then individual peptide property calculation.
+    Includes logic to extend short proteins before RSA prediction.
     
     Args:
         peptides_df_with_ncbi (pd.DataFrame): DataFrame with 'identifier', 'Aminoacids', and 'NCBI_id' columns.
@@ -593,12 +627,48 @@ def calculate_all_peptide_structural_properties(peptides_df_with_ncbi, full_prot
     if valid_peptides_df.empty:
         return pd.DataFrame(columns=[f'{prop}_perc' for prop in PEPTIDE_PROPERTY_TYPES])
 
-    # 1. Get unique full proteins and their sequences for NetSurfP-3 input
-    full_protein_sequences_dict, full_protein_nsp3_input_df = get_unique_full_protein_info(full_proteins_df)
+    # 1. Get unique full proteins and their *original* sequences
+    original_full_protein_sequences_dict, full_protein_nsp3_input_df = get_unique_full_protein_info(full_proteins_df)
 
-    # 2. Run NetSurfP-3 for RSA on all unique full proteins using the standalone version (PARALLELIZED)
-    print(f"\nPredicting RSA for {len(full_protein_nsp3_input_df)} unique full proteins using NetSurfP-3 (standalone, parallelized)...")
-    protein_rsa_map = run_netsurfp3_standalone_prediction(full_protein_nsp3_input_df, num_netsurfp3_processes=num_netsurfp3_processes)
+    # Extend short proteins for NetSurfP-3 input
+    extended_protein_nsp3_input_df_data = []
+    extended_full_protein_sequences_dict = {} # To store the extended sequences for direct lookup
+    
+    # Iterate through unique NCBI_ids to find the max peptide length for each
+    unique_ncbi_ids = valid_peptides_df['NCBI_id'].unique()
+    
+    # Store max peptide length per protein, to ensure protein is at least that long
+    max_peptide_len_per_protein = {}
+    for ncbi_id in unique_ncbi_ids:
+        peptides_for_this_protein = valid_peptides_df[valid_peptides_df['NCBI_id'] == ncbi_id]
+        if not peptides_for_this_protein.empty:
+            max_peptide_len_per_protein[ncbi_id] = max(len(p_seq) for p_seq in peptides_for_this_protein['Aminoacids'] if isinstance(p_seq, str))
+        else:
+            max_peptide_len_per_protein[ncbi_id] = 0 # Should not happen if filtered correctly
+            
+    for ncbi_id, original_seq in original_full_protein_sequences_dict.items():
+        # The protein needs to be at least as long as its original sequence, AND as long as the longest peptide associated with it
+        # If no peptides associated (e.g. from filtering), just use original length
+        required_min_len = max_peptide_len_per_protein.get(ncbi_id, 0)
+        target_len_for_extension = max(len(original_seq), required_min_len)
+        
+        extended_seq = _extend_protein_sequence(original_seq, target_len_for_extension)
+        extended_full_protein_sequences_dict[ncbi_id] = extended_seq
+        
+        extended_protein_nsp3_input_df_data.append({
+            'identifier': ncbi_id,
+            'Aminoacids': extended_seq
+        })
+        
+        if len(original_seq) < target_len_for_extension: # Only print debug if extension actually happened
+            print(f"DEBUG: Protein {ncbi_id}: Original length {len(original_seq)}, Longest associated peptide {required_min_len}, Extended to {len(extended_seq)}.")
+
+    extended_protein_nsp3_input_df = pd.DataFrame(extended_protein_nsp3_input_df_data)
+
+
+    # 2. Run NetSurfP-3 for RSA on all unique *extended* full proteins (PARALLELIZED)
+    print(f"\nPredicting RSA for {len(extended_protein_nsp3_input_df)} unique (potentially extended) full proteins using NetSurfP-3 (standalone, parallelized)...")
+    protein_rsa_map = run_netsurfp3_standalone_prediction(extended_protein_nsp3_input_df, num_netsurfp3_processes=num_netsurfp3_processes)
     print("NetSurfP-3 RSA prediction complete.")
     
     # 3. Run S4PRED for secondary structure on all peptides (same logic as before)
@@ -650,13 +720,14 @@ def calculate_all_peptide_structural_properties(peptides_df_with_ncbi, full_prot
         peptide_seq = row['Aminoacids']
         ncbi_id = row['NCBI_id']
         
-        full_prot_seq = full_protein_sequences_dict.get(ncbi_id)
-        prot_rsa_scores = protein_rsa_map.get(ncbi_id)
+        # Now use the extended sequence and RSA scores
+        full_prot_seq_for_peptide = extended_full_protein_sequences_dict.get(ncbi_id)
+        prot_rsa_scores_for_peptide = protein_rsa_map.get(ncbi_id)
         s4pred_ss = s4pred_map.get(peptide_id, 'C' * len(peptide_seq))
 
         task_args.append(
             (peptide_id, peptide_seq, s4pred_ss, threshold_disorder, 
-             full_prot_seq, prot_rsa_scores, rsa_buried_threshold)
+             full_prot_seq_for_peptide, prot_rsa_scores_for_peptide, rsa_buried_threshold, ncbi_id)
         )
 
     print(f"Calculating peptide properties for {len(valid_peptides_df)} peptides in parallel (disorder overrides SS, plus buried/exposed)...")
@@ -672,7 +743,7 @@ def calculate_all_peptide_structural_properties(peptides_df_with_ncbi, full_prot
             results.append(res)
 
     return pd.DataFrame(results).set_index('identifier')
-    
+
 
 # Helper Function to Plot Average Peptide Properties (no changes needed here)
 def plot_average_properties(average_properties_dict, title, filename_prefix, results_dir):
