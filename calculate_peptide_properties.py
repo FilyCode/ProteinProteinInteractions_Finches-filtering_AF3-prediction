@@ -35,15 +35,15 @@ RSA_BURIED_THRESHOLD = 0.25 # Relative Solvent Accessibility threshold: <=0.25 i
 
 
 DATA_DIR = "/projectnb/cancergrp/Philipp/data/"
-RESULTS_DIR = "/projectnb/cancergrp/Philipp/results/RITA_peptides"
+RESULTS_DIR = "/projectnb/cancergrp/Philipp/results/ABT_peptides"
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
 full_library_df = pd.read_csv(f"{DATA_DIR}VP_library_all_sequences.csv")
-RITA_exp_df = pd.read_excel(f"{DATA_DIR}RITA_and_ABT_pos_selection_screens.xlsx", sheet_name='RITA')
+RITA_exp_df = pd.read_excel(f"{DATA_DIR}RITA_and_ABT_pos_selection_screens.xlsx", sheet_name='ABT')
 
 # Load the full proteins DataFrame
 full_proteins_df = pd.read_csv(f"{DATA_DIR}full_library_virus_proteins.csv")
-full_proteins_df['NCBI_id'] = full_proteins_df['NCBI_id'].str.split('|').str[0]
+full_proteins_df['Identifier'] = full_proteins_df['Identifier'].str.split('|').str[0]
 # Ensure the protein sequence column is named 'Sequence' for consistency
 if 'Protein Sequence' in full_proteins_df.columns:
     full_proteins_df.rename(columns={'Protein Sequence': 'Sequence'}, inplace=True)
@@ -322,21 +322,21 @@ def _extend_protein_sequence(original_seq, target_length):
 
 def get_unique_full_protein_info(full_library_proteins_df):
     """
-    Extracts unique full protein sequences and their NCBI_ids for NetSurfP-3 input.
-    Returns a dictionary {NCBI_id: sequence} and a DataFrame suitable for NetsurfP-3 input.
-    Assumes full_library_proteins_df has 'NCBI_id' and a 'Sequence' column.
+    Extracts unique full protein sequences and their Identifier for NetSurfP-3 input.
+    Returns a dictionary {Identifier: sequence} and a DataFrame suitable for NetsurfP-3 input.
+    Assumes full_library_proteins_df has 'Identifier' and a 'Sequence' column.
     """
-    # Ensure 'Sequence' column is string and not empty, and 'NCBI_id' is present
+    # Ensure 'Sequence' column is string and not empty, and 'Identifier' is present
     unique_proteins_df = full_library_proteins_df[
         full_library_proteins_df['Sequence'].apply(lambda x: isinstance(x, str) and len(x) > 0)
     ].copy()
     
-    # Drop duplicates based on NCBI_id and sequence to ensure unique proteins for prediction
-    unique_proteins_df = unique_proteins_df.drop_duplicates(subset=['NCBI_id', 'Sequence'])
+    # Drop duplicates based on Identifier and sequence to ensure unique proteins for prediction
+    unique_proteins_df = unique_proteins_df.drop_duplicates(subset=['Identifier', 'Sequence'])
 
-    protein_sequences_dict = unique_proteins_df.set_index('NCBI_id')['Sequence'].to_dict()
+    protein_sequences_dict = unique_proteins_df.set_index('Identifier')['Sequence'].to_dict()
     # Create a DataFrame for input to NetSurfP-3
-    protein_input_df = unique_proteins_df[['NCBI_id', 'Sequence']].rename(columns={'NCBI_id': 'identifier', 'Sequence': 'Aminoacids'})
+    protein_input_df = unique_proteins_df[['Identifier', 'Sequence']].rename(columns={'Identifier': 'identifier', 'Sequence': 'Aminoacids'})
     return protein_sequences_dict, protein_input_df
 
 # Helper function for buried/exposed prediction with netsurfp3
@@ -514,7 +514,7 @@ def _process_single_peptide_properties(args):
     It now expects the *extended* full protein sequence and its corresponding RSA scores
     for accurate buried/exposed calculation for short proteins.
     """
-    peptide_id, seq, s4pred_pred_string, threshold_disorder, full_protein_seq_extended, protein_rsa_scores_extended, rsa_buried_threshold, ncbi_id = args
+    peptide_id, seq, s4pred_pred_string, threshold_disorder, full_protein_seq_extended, protein_rsa_scores_extended, rsa_buried_threshold, protein_id = args
 
     initial_props = {f'{prop}_perc': 0.0 for prop in PEPTIDE_PROPERTY_TYPES}
     return_dict = {'identifier': peptide_id, **initial_props}
@@ -579,7 +579,7 @@ def _process_single_peptide_properties(args):
                 return_dict['Buried_perc'] = (buried_count / matched_seq_len) * 100
                 return_dict['Exposed_perc'] = (exposed_count / matched_seq_len) * 100
             else:
-                sys.stderr.write(f"Warning: RSA slice length mismatch for peptide '{peptide_id}' (NCBI: {ncbi_id}, seq: '{seq[:20]}...'). "
+                sys.stderr.write(f"Warning: RSA slice length mismatch for peptide '{peptide_id}' (Protein ID: {protein_id}, seq: '{seq[:20]}...'). "
                                  f"Expected {matched_seq_len}, got {len(peptide_rsa_slice)}. "
                                  f"This might indicate an issue with RSA score generation. Buried/Exposed percentages will be 0.\n")
         else:
@@ -591,9 +591,9 @@ def _process_single_peptide_properties(args):
             else:
                  reason_attempted = f" (original sequence '{seq[:20]}...')"
 
-            sys.stderr.write(f"Warning: Peptide '{peptide_id}'{reason_attempted} not found in its extended full protein sequence (NCBI: {ncbi_id}). Buried/Exposed percentages will be 0.\n")
+            sys.stderr.write(f"Warning: Peptide '{peptide_id}'{reason_attempted} not found in its extended full protein sequence (Protein ID: {protein_id}). Buried/Exposed percentages will be 0.\n")
     else:
-        sys.stderr.write(f"Warning: Missing extended full protein sequence or RSA scores for protein '{ncbi_id}' (peptide '{peptide_id}'), "
+        sys.stderr.write(f"Warning: Missing extended full protein sequence or RSA scores for protein '{protein_id}' (peptide '{peptide_id}'), "
                          f"or length mismatch (full_seq len: {len(full_protein_seq_extended) if full_protein_seq_extended else 0} vs rsa scores len: {len(protein_rsa_scores_extended) if protein_rsa_scores_extended else 0}). "
                          f"Buried/Exposed percentages will be 0.\n")
 
@@ -601,15 +601,15 @@ def _process_single_peptide_properties(args):
 
 
 # Helper Function to Get Peptide Properties (Disorder, Secondary Structure, Exposed/Buried)
-def calculate_all_peptide_structural_properties(peptides_df_with_ncbi, full_proteins_df, threshold_disorder=0.5, rsa_buried_threshold=0.25, num_processes=None, num_netsurfp3_processes=None):
+def calculate_all_peptide_structural_properties(peptides_df_for_structural_analysis, full_proteins_df, threshold_disorder=0.5, rsa_buried_threshold=0.25, num_processes=None, num_netsurfp3_processes=None):
     """
     Calculates all peptide properties (Disorder, SS, Buried/Exposed).
     Orchestrates full protein RSA prediction and then individual peptide property calculation.
     Includes logic to extend short proteins before RSA prediction.
     
     Args:
-        peptides_df_with_ncbi (pd.DataFrame): DataFrame with 'identifier', 'Aminoacids', and 'NCBI_id' columns.
-        full_proteins_df (pd.DataFrame): DataFrame with 'NCBI_id' and 'Sequence' columns for full proteins.
+        peptides_df_for_structural_analysis (pd.DataFrame): DataFrame with 'identifier', 'Aminoacids', and 'Protein_ID' columns.
+        full_proteins_df (pd.DataFrame): DataFrame with 'Identifier' and 'Sequence' columns for full proteins.
         threshold_disorder (float): Disorder score threshold for metapredict.
         rsa_buried_threshold (float): RSA threshold for classifying residues as buried.
         num_processes (int, optional): Number of CPU cores to use for parallel processing for general peptide properties.
@@ -617,54 +617,62 @@ def calculate_all_peptide_structural_properties(peptides_df_with_ncbi, full_prot
     Returns:
         pd.DataFrame: A DataFrame indexed by 'identifier' with all calculated percentage columns.
     """
-    if peptides_df_with_ncbi.empty:
+    if peptides_df_for_structural_analysis.empty:
         return pd.DataFrame(columns=[f'{prop}_perc' for prop in PEPTIDE_PROPERTY_TYPES])
 
-    valid_peptides_df = peptides_df_with_ncbi[
-        peptides_df_with_ncbi['Aminoacids'].apply(lambda x: isinstance(x, str) and len(x) > 0)
+    initial_peptide_count = len(peptides_df_for_structural_analysis)
+    peptides_df_for_structural_analysis = peptides_df_for_structural_analysis[peptides_df_for_structural_analysis['Protein_ID'].notna()]
+    if len(peptides_df_for_structural_analysis) < initial_peptide_count:
+        removed_count = initial_peptide_count - len(peptides_df_for_structural_analysis)
+        sys.stderr.write(f"Warning: Removed {removed_count} peptides due to missing 'Protein_ID'. These peptides will have 0% for structural properties.\n")
+
+    # (Original filtering for empty/non-string amino acids)
+    valid_peptides_df = peptides_df_for_structural_analysis[
+        peptides_df_for_structural_analysis['Aminoacids'].apply(lambda x: isinstance(x, str) and len(x) > 0)
     ].copy()
 
     if valid_peptides_df.empty:
         return pd.DataFrame(columns=[f'{prop}_perc' for prop in PEPTIDE_PROPERTY_TYPES])
 
     # 1. Get unique full proteins and their *original* sequences
+    # Note: full_proteins_df's 'Identifier' column is now implicitly treated as the general 'Protein_ID' column
+    # because your external script will populate it with UniProt IDs when NCBI is missing.
     original_full_protein_sequences_dict, full_protein_nsp3_input_df = get_unique_full_protein_info(full_proteins_df)
 
     # Extend short proteins for NetSurfP-3 input
     extended_protein_nsp3_input_df_data = []
     extended_full_protein_sequences_dict = {} # To store the extended sequences for direct lookup
     
-    # Iterate through unique NCBI_ids to find the max peptide length for each
-    unique_ncbi_ids = valid_peptides_df['NCBI_id'].unique()
+    # Iterate through unique Protein_IDs to find the max peptide length for each
+    unique_protein_ids = valid_peptides_df['Protein_ID'].unique()
     
     # Store max peptide length per protein, to ensure protein is at least that long
     max_peptide_len_per_protein = {}
-    for ncbi_id in unique_ncbi_ids:
-        peptides_for_this_protein = valid_peptides_df[valid_peptides_df['NCBI_id'] == ncbi_id]
+    for protein_id in unique_protein_ids:
+        peptides_for_this_protein = valid_peptides_df[valid_peptides_df['Protein_ID'] == protein_id]
         if not peptides_for_this_protein.empty:
-            max_peptide_len_per_protein[ncbi_id] = max(len(p_seq) for p_seq in peptides_for_this_protein['Aminoacids'] if isinstance(p_seq, str))
+            max_peptide_len_per_protein[protein_id] = max(len(p_seq) for p_seq in peptides_for_this_protein['Aminoacids'] if isinstance(p_seq, str))
         else:
-            max_peptide_len_per_protein[ncbi_id] = 0 # Should not happen if filtered correctly
+            max_peptide_len_per_protein[protein_id] = 0
             
-    for ncbi_id, original_seq in original_full_protein_sequences_dict.items():
+    for protein_id, original_seq in original_full_protein_sequences_dict.items():
         # The protein needs to be at least as long as its original sequence, AND as long as the longest peptide associated with it
         # If no peptides associated (e.g. from filtering), just use original length
-        required_min_len = max_peptide_len_per_protein.get(ncbi_id, 0)
+        required_min_len = max_peptide_len_per_protein.get(protein_id, 0)
         target_len_for_extension = max(len(original_seq), required_min_len)
         
         extended_seq = _extend_protein_sequence(original_seq, target_len_for_extension)
-        extended_full_protein_sequences_dict[ncbi_id] = extended_seq
+        extended_full_protein_sequences_dict[protein_id] = extended_seq
         
         extended_protein_nsp3_input_df_data.append({
-            'identifier': ncbi_id,
+            'identifier': protein_id, 
             'Aminoacids': extended_seq
         })
         
         if len(original_seq) < target_len_for_extension: # Only print debug if extension actually happened
-            print(f"DEBUG: Protein {ncbi_id}: Original length {len(original_seq)}, Longest associated peptide {required_min_len}, Extended to {len(extended_seq)}.")
+            print(f"DEBUG: Protein {protein_id}: Original length {len(original_seq)}, Longest associated peptide {required_min_len}, Extended to {len(extended_seq)}.")
 
     extended_protein_nsp3_input_df = pd.DataFrame(extended_protein_nsp3_input_df_data)
-
 
     # 2. Run NetSurfP-3 for RSA on all unique *extended* full proteins (PARALLELIZED)
     print(f"\nPredicting RSA for {len(extended_protein_nsp3_input_df)} unique (potentially extended) full proteins using NetSurfP-3 (standalone, parallelized)...")
@@ -718,16 +726,16 @@ def calculate_all_peptide_structural_properties(peptides_df_with_ncbi, full_prot
     for _, row in valid_peptides_df.iterrows():
         peptide_id = row['identifier']
         peptide_seq = row['Aminoacids']
-        ncbi_id = row['NCBI_id']
+        protein_id = row['Protein_ID'] 
         
         # Now use the extended sequence and RSA scores
-        full_prot_seq_for_peptide = extended_full_protein_sequences_dict.get(ncbi_id)
-        prot_rsa_scores_for_peptide = protein_rsa_map.get(ncbi_id)
+        full_prot_seq_for_peptide = extended_full_protein_sequences_dict.get(protein_id)
+        prot_rsa_scores_for_peptide = protein_rsa_map.get(protein_id)
         s4pred_ss = s4pred_map.get(peptide_id, 'C' * len(peptide_seq))
 
         task_args.append(
             (peptide_id, peptide_seq, s4pred_ss, threshold_disorder, 
-             full_prot_seq_for_peptide, prot_rsa_scores_for_peptide, rsa_buried_threshold, ncbi_id)
+             full_prot_seq_for_peptide, prot_rsa_scores_for_peptide, rsa_buried_threshold, protein_id)
         )
 
     print(f"Calculating peptide properties for {len(valid_peptides_df)} peptides in parallel (disorder overrides SS, plus buried/exposed)...")
@@ -741,6 +749,19 @@ def calculate_all_peptide_structural_properties(peptides_df_with_ncbi, full_prot
                         total=len(task_args),
                         desc=f"Processing peptides ({num_processes} cores)"):
             results.append(res)
+            
+    # Re-add peptides that were filtered out with 0% properties (because of missing Protein_ID)
+    # Create a dummy DataFrame for the removed peptides
+    removed_peptides_df = peptides_df_for_structural_analysis[peptides_df_for_structural_analysis['Protein_ID'].isna()]
+    if not removed_peptides_df.empty:
+        dummy_results = []
+        for _, row in removed_peptides_df.iterrows():
+            dummy_results.append({
+                'identifier': row['identifier'],
+                'Disorder_perc': 0.0, 'Helix_perc': 0.0, 'Sheet_perc': 0.0, 'Coil_perc': 0.0,
+                'Buried_perc': 0.0, 'Exposed_perc': 0.0
+            })
+        results.extend(dummy_results) # Add these dummy results to the main results list
 
     return pd.DataFrame(results).set_index('identifier')
 
@@ -840,10 +861,15 @@ print(f"  Number of significant peptides with logFC = 0 (or NaN): {len(RITA_sig)
 # 'Disorder' will be mutually exclusive with Helix/Sheet/Coil.
 PEPTIDE_PROPERTY_TYPES = ['Disorder', 'Helix', 'Sheet', 'Coil', 'Buried', 'Exposed']
 
+# This assumes full_library_df already has 'NCBI_id' and 'Uniprot_id' columns.
+# It will use NCBI_id if present, otherwise Uniprot_id. If both are NaN, Protein_ID will be NaN.
+full_library_filtered['Protein_ID'] = full_library_filtered['NCBI_id'].fillna(full_library_filtered['Uniprot_id'])
+
+
 # Calculate all peptide properties once 
 print("\nCalculating all unique peptide properties (Disorder, Secondary Structure) ONCE")
 all_peptides_properties_df = calculate_all_peptide_structural_properties(
-    full_library_filtered[['identifier', 'Aminoacids', 'NCBI_id']],
+    full_library_filtered[['identifier', 'Aminoacids', 'Protein_ID']],
     full_proteins_df,
     threshold_disorder=0.5,
     rsa_buried_threshold=RSA_BURIED_THRESHOLD,
@@ -853,7 +879,7 @@ all_peptides_properties_df = calculate_all_peptide_structural_properties(
 print("\nGenerating comprehensive peptide properties and metadata table...")
 
 # Start with the basic peptide info (identifier, sequence, NCBI_id) from the filtered full library
-comprehensive_peptide_table = full_library_filtered[['identifier', 'Aminoacids', 'NCBI_id']].copy()
+comprehensive_peptide_table = full_library_filtered[['identifier', 'Aminoacids', 'NCBI_id', 'Uniprot_id', 'Protein_ID']].copy()
 
 # Merge with the calculated structural properties from all_peptides_properties_df
 comprehensive_peptide_table = comprehensive_peptide_table.merge(

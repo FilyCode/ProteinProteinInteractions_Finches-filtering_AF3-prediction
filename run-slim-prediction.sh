@@ -42,7 +42,7 @@
 #$ -M phitro@bu.edu
 
 # Request parallel environment for shared memory applications
-#$ -pe omp 16
+#$ -pe omp 2
 
 # Request memory per core. Total memory = N_cores * mem_per_core.
 #$ -l mem_per_core=1G
@@ -68,7 +68,7 @@ echo "Loading Conda environment..."
 module load miniconda
 
 # Activate the specific Conda environment created earlier
-conda activate slimsuite_env
+conda activate slimsuite_env_py2
 
 # Verify environment is active (optional, good for debugging)
 echo "Conda environment active: $CONDA_DEFAULT_ENV (prefix: $CONDA_PREFIX)"
@@ -81,11 +81,7 @@ echo "Python version: $(python --version)"
 # IMPORTANT: Adjust PROJECT_DIR to the actual path where you store your scripts and data.
 PROJECT_DIR="/projectnb/cancergrp/Philipp" 
 
-OUTPUT_DIR="${PROJECT_DIR}/results/RITA_peptides"
-PYTHON_SCRIPT="${PROJECT_DIR}/find-slims-for-different-peptide-groups.py"
-
-# Create the output directory if it doesn't exist
-mkdir -p "$(dirname "$OUTPUT_DIR")"
+PYTHON_SCRIPT="${PROJECT_DIR}/find-slims-for-different-peptide-groups-denovo-and-known-slims_py2.py"
 
 # SLiMFinder's 'forks' option needs to be passed through the Python script.
 NUM_FORKS=$NSLOTS
